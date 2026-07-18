@@ -14,8 +14,7 @@ from kinesis.domain.types import Frame, HandObservation, IntentType
 from kinesis.ports.frame_source import FrameSource
 from kinesis.ports.hand_tracker import HandTracker
 
-# Base open hand; then a pointing pose (index up, other fingers curled) and a
-# pinch (thumb tip brought onto the index tip).
+# Base open hand (all fingers extended).
 _BASE = np.array([
     [0.50, 0.90, 0.0], [0.42, 0.82, 0.0], [0.37, 0.74, 0.0], [0.33, 0.68, 0.0],
     [0.30, 0.63, 0.0], [0.45, 0.60, 0.0], [0.44, 0.48, 0.0], [0.43, 0.40, 0.0],
@@ -27,16 +26,18 @@ _BASE = np.array([
 
 
 def _pointing():
+    """Fist with index out: middle/ring/pinky curled toward the palm."""
     lm = _BASE.copy()
-    lm[12] = [0.52, 0.62, 0.0]  # curl middle / ring / pinky, keep index extended
+    lm[12] = [0.52, 0.62, 0.0]
     lm[16] = [0.58, 0.62, 0.0]
     lm[20] = [0.63, 0.64, 0.0]
     return lm
 
 
-def _pinch():
-    lm = _pointing().copy()
-    lm[4] = [0.43, 0.35, 0.0]  # thumb tip onto index tip
+def _open_pinch():
+    """Open hand (fingers extended) with the thumb tip brought onto the index tip."""
+    lm = _BASE.copy()
+    lm[4] = [0.43, 0.35, 0.0]
     return lm
 
 
@@ -77,7 +78,8 @@ class ScriptedTracker(HandTracker):
 
 
 def test_pipeline_turns_gestures_into_intents():
-    seq = [_pointing(), _pointing(), _pinch(), _pinch(), _pointing()]
+    # point a few frames (cursor moves), then hold an open-hand pinch (debounce -> click)
+    seq = [_pointing()] * 3 + [_open_pinch()] * 5
     out = DryRunAdapter(printer=lambda _s: None)
     Pipeline(
         source=ScriptedSource(len(seq)),
@@ -89,7 +91,22 @@ def test_pipeline_turns_gestures_into_intents():
 
     kinds = [i.type for i in out.history]
     assert IntentType.MOVE_CURSOR in kinds  # from the pointing pose
-    assert IntentType.CLICK in kinds        # from the pinch
+    assert IntentType.CLICK in kinds        # from the open-hand pinch
+
+
+def test_pipeline_ignores_fist_pinch():
+    # a tight thumb-index gap but in the fist/point pose must NOT click
+    lm = _pointing()
+    lm[4] = [0.43, 0.35, 0.0]  # thumb tucked onto index while middle/ring/pinky curled
+    out = DryRunAdapter(printer=lambda _s: None)
+    Pipeline(
+        source=ScriptedSource(6),
+        tracker=ScriptedTracker([lm]),
+        engine=GestureEngine([PinchRecognizer, PointRecognizer]),
+        output=out,
+        smoother=_NoSmoother(),
+    ).run()
+    assert IntentType.CLICK not in [i.type for i in out.history]
 
 
 def test_pipeline_stays_idle_with_no_hands():
@@ -108,7 +125,7 @@ def test_pipeline_stays_idle_with_no_hands():
         output=out,
         smoother=_NoSmoother(),
     ).run()
-    assert out.history == []  # no hands -> no intents
+    assert out.history == []
 
 
 def _run():
