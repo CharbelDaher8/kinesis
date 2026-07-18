@@ -22,7 +22,8 @@ class FakeMouse:
 
 
 def _adapter(mouse):
-    return OSCursorAdapter(screen_size=(1000.0, 800.0), mouse=mouse)
+    # smooth=False -> moves synchronously, so assertions are deterministic (no thread)
+    return OSCursorAdapter(screen_size=(1000.0, 800.0), mouse=mouse, smooth=False)
 
 
 def test_move_maps_normalized_to_pixels():
@@ -47,6 +48,24 @@ def test_scroll_forwards_deltas():
     m = FakeMouse()
     _adapter(m).handle(Intent(IntentType.SCROLL, 0.0, {"dx": 0, "dy": -3}))
     assert m.scrolls == [(0, -3)]
+
+
+def test_smooth_mode_eases_toward_target():
+    import time
+
+    m = FakeMouse()
+    a = OSCursorAdapter(screen_size=(1000.0, 800.0), mouse=m, smooth=True, responsiveness=0.6, rate_hz=240)
+    try:
+        a.handle(Intent(IntentType.MOVE_CURSOR, 0.0, {"x": 0.5, "y": 0.5}))
+        deadline = time.perf_counter() + 1.0
+        while time.perf_counter() < deadline:
+            if abs(m.position[0] - 500.0) < 1.0 and abs(m.position[1] - 400.0) < 1.0:
+                break
+            time.sleep(0.01)
+        assert abs(m.position[0] - 500.0) < 2.0  # converged toward the target
+        assert abs(m.position[1] - 400.0) < 2.0
+    finally:
+        a.close()
 
 
 def _run():
