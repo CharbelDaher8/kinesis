@@ -1,0 +1,4 @@
+# Installed into .venv (Python 3.11). Regenerate a pinned lock with:
+#   .venv/bin/python -m pip freeze > requirements.lock.txt
+mediapipe    # hand tracking; pulls in opencv-contrib-python + numpy + protobuf
+pynput       # cursor / scroll / key output via Quartz (needs Accessibility permission)

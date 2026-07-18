@@ -1,0 +1,1 @@
+"""MediaPipeTracker(HandTracker): mediapipe.tasks HandLandmarker + models/hand_landmarker.task, RunningMode.VIDEO (strictly-increasing ms timestamps). Convert Frame BGR->RGB here; return HandObservation list. See scripts/hello_camera.py. Legacy mp.solutions is NOT available in 0.10.x."""
