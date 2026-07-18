@@ -17,12 +17,13 @@ class WebcamSource(FrameSource):
     inside this file; colour conversion to RGB is the tracker's job.
     """
 
-    def __init__(self, index: int = 0, width: int = 1280, height: int = 720, mirror: bool = True):
+    def __init__(self, index: int = 0, width: int = 1280, height: int = 720, mirror: bool = True, fps: int = 60):
         self._cap = cv2.VideoCapture(index)
         if not self._cap.isOpened():
             raise RuntimeError(f"could not open webcam at index {index} (check camera permission)")
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self._cap.set(cv2.CAP_PROP_FPS, fps)  # a request — the camera may cap lower (see scripts/probe_camera.py)
         self._mirror = mirror
         self._frame_id = 0
         self._t0 = time.perf_counter()
