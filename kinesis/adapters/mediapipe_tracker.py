@@ -23,8 +23,8 @@ class MediaPipeTracker(HandTracker):
         self,
         model_path: str = DEFAULT_MODEL,
         num_hands: int = 2,
-        min_detection_confidence: float = 0.6,
-        min_tracking_confidence: float = 0.5,
+        min_detection_confidence: float = 0.5,
+        min_tracking_confidence: float = 0.3,  # low, so tracking survives the occluded pointing fist
     ):
         options = vision.HandLandmarkerOptions(
             base_options=python.BaseOptions(model_asset_path=model_path),

@@ -20,6 +20,7 @@ def build(live: bool = False) -> Pipeline:
         tracker=MediaPipeTracker(),
         engine=GestureEngine([PinchRecognizer, PointRecognizer]),
         output=output,
+        log_fps=True,
     )
 
 

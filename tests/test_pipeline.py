@@ -128,6 +128,54 @@ def test_pipeline_stays_idle_with_no_hands():
     assert out.history == []
 
 
+class GappyTracker(HandTracker):
+    """Returns a hand per frame, or [] where the scripted array is None (a blip)."""
+
+    def __init__(self, arrays):
+        self.arrays, self.i = arrays, 0
+
+    def track(self, frame):
+        arr = self.arrays[self.i]
+        self.i += 1
+        return [] if arr is None else [HandObservation(arr, "Right", frame.timestamp)]
+
+    def close(self):
+        pass
+
+
+def _pipe_over(seq, grace):
+    return Pipeline(
+        source=ScriptedSource(len(seq)),
+        tracker=GappyTracker(seq),
+        engine=GestureEngine([PinchRecognizer, PointRecognizer]),
+        output=DryRunAdapter(printer=lambda _s: None),
+        smoother=_NoSmoother(),
+        grace=grace,
+    )
+
+
+def test_grace_holds_engagement_through_a_blip():
+    seq = [_pointing(), _pointing(), _pointing(), None, _pointing()]  # frame 3 = tracking blip
+    pipe = _pipe_over(seq, grace=8)
+    pipe.step()
+    pipe.step()  # -> ENGAGED
+    assert pipe.engagement.engaged
+    pipe.step()
+    pipe.step()  # the blip frame
+    assert pipe.engagement.engaged  # grace kept control alive
+
+
+def test_no_grace_disengages_on_a_blip():
+    seq = [_pointing(), _pointing(), _pointing(), None, _pointing()]
+    pipe = _pipe_over(seq, grace=0)
+    pipe.step()
+    pipe.step()
+    pipe.step()
+    assert pipe.engagement.engaged
+    pipe.step()  # blip with no grace
+    assert not pipe.engagement.engaged
+
+
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in tests:
