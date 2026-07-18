@@ -18,15 +18,15 @@ class HandObservation:
     timestamp: float
 
 
-@dataclass 
+@dataclass
 class HandFeatures:
-    cursor_point: tuple
-    pinch_distance: float 
-    fingers_extended: tuple 
-    centroid: float
-    velocity: float
-    palm_normal: float
-    palm_angle: float
+    cursor_point: tuple          # (x, y) index-tip position, normalized 0..1
+    pinch_distance: float        # thumb-index gap / hand scale (scale-invariant)
+    fingers_extended: tuple      # (thumb, index, middle, ring, pinky) bools
+    centroid: tuple              # (x, y) hand center, normalized
+    velocity: tuple              # (vx, vy) centroid motion per second
+    palm_normal: tuple           # (nx, ny, nz) unit normal of the palm plane
+    palm_angle: float            # in-plane hand rotation, radians
     timestamp: float
 
 class GestureType(Enum):
