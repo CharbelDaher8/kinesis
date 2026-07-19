@@ -56,6 +56,8 @@ class Pipeline:
         self._since_engage = grace + 1
         self._fps_count = 0
         self._fps_t0 = 0.0
+        self._compute_sum = 0.0
+        self._compute_max = 0.0
 
     def run(self) -> None:
         self._running = True
@@ -71,6 +73,7 @@ class Pipeline:
         frame = self.source.read()
         if frame is None:
             return False
+        t0 = time.perf_counter() if self.log_fps else 0.0
 
         hands = self.tracker.track(frame)
         context = self.context.current() if self.context else None
@@ -98,6 +101,10 @@ class Pipeline:
                 if intent is not None:
                     self.output.handle(intent)
 
+        if self.log_fps:
+            dt = time.perf_counter() - t0
+            self._compute_sum += dt
+            self._compute_max = max(self._compute_max, dt)
         self._tick_fps()
         return True
 
@@ -112,8 +119,10 @@ class Pipeline:
         self._fps_count += 1
         elapsed = time.perf_counter() - self._fps_t0
         if elapsed >= 2.0:
-            print(f"[fps] {self._fps_count / elapsed:4.1f}")
+            avg_ms = 1000.0 * self._compute_sum / max(self._fps_count, 1)
+            print(f"[fps] {self._fps_count / elapsed:4.1f}   compute avg {avg_ms:4.1f}ms  max {1000.0 * self._compute_max:5.1f}ms")
             self._fps_count, self._fps_t0 = 0, time.perf_counter()
+            self._compute_sum, self._compute_max = 0.0, 0.0
 
     def stop(self) -> None:
         self._running = False

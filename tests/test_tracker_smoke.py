@@ -27,7 +27,7 @@ def test_tracker_runs_on_synthetic_frame():
     tracker = MediaPipeTracker()
     try:
         rng = np.random.default_rng(0)
-        img = rng.integers(0, 255, size=(480, 640, 3), dtype=np.uint8)
+        img = rng.integers(0, 255, size=(720, 1280, 3), dtype=np.uint8)  # exercises the downscale path
         for i in range(3):
             hands = tracker.track(Frame(image=img, timestamp=i / 30.0, frame_id=i))
             assert isinstance(hands, list)  # noise -> no hand, but the whole path runs

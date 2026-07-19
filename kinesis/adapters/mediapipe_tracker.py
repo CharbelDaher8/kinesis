@@ -22,9 +22,10 @@ class MediaPipeTracker(HandTracker):
     def __init__(
         self,
         model_path: str = DEFAULT_MODEL,
-        num_hands: int = 2,
+        num_hands: int = 1,  # one hand for the cursor keeps inference cheap and uniform
         min_detection_confidence: float = 0.5,
         min_tracking_confidence: float = 0.3,  # low, so tracking survives the occluded pointing fist
+        proc_width: int = 640,  # downscale before inference; landmarks are normalized so accuracy holds
     ):
         options = vision.HandLandmarkerOptions(
             base_options=python.BaseOptions(model_asset_path=model_path),
@@ -34,10 +35,15 @@ class MediaPipeTracker(HandTracker):
             min_tracking_confidence=min_tracking_confidence,
         )
         self._detector = vision.HandLandmarker.create_from_options(options)
+        self._proc_width = proc_width
         self._last_ts_ms = -1
 
     def track(self, frame: Frame) -> list[HandObservation]:
-        rgb = cv2.cvtColor(frame.image, cv2.COLOR_BGR2RGB)
+        image = frame.image
+        if self._proc_width and image.shape[1] > self._proc_width:
+            scale = self._proc_width / image.shape[1]
+            image = cv2.resize(image, (self._proc_width, round(image.shape[0] * scale)))
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         result = self._detector.detect_for_video(mp_image, self._monotonic_ms(frame.timestamp))
 
