@@ -50,6 +50,17 @@ def test_scroll_forwards_deltas():
     assert m.scrolls == [(0, -3)]
 
 
+def test_sensitivity_amplifies_from_center():
+    m = FakeMouse()
+    a = OSCursorAdapter(screen_size=(1000.0, 800.0), mouse=m, smooth=False, sensitivity=2.0)
+    a.handle(Intent(IntentType.MOVE_CURSOR, 0.0, {"x": 0.5, "y": 0.5}))
+    assert m.position == (500.0, 400.0)   # center stays put
+    a.handle(Intent(IntentType.MOVE_CURSOR, 0.0, {"x": 0.75, "y": 0.5}))
+    assert m.position == (1000.0, 400.0)  # 0.75 -> 0.5 + 0.25*2 = 1.0 (full right)
+    a.handle(Intent(IntentType.MOVE_CURSOR, 0.0, {"x": 0.9, "y": 0.5}))
+    assert m.position == (1000.0, 400.0)  # amplified past the edge -> clamped
+
+
 def test_smooth_mode_eases_toward_target():
     import time
 

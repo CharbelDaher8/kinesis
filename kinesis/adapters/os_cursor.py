@@ -13,6 +13,12 @@ def _clamp01(v: float) -> float:
     return 0.0 if v < 0.0 else 1.0 if v > 1.0 else v
 
 
+def _gain(v: float, sensitivity: float) -> float:
+    """Amplify displacement from the frame center (0.5) — the 'DPI' knob.
+    sensitivity 1.0 = 1:1; 2.0 = the middle half of the frame covers the screen."""
+    return _clamp01(0.5 + (v - 0.5) * sensitivity)
+
+
 def _main_screen_size() -> tuple[float, float]:
     size = NSScreen.mainScreen().frame().size
     return (float(size.width), float(size.height))
@@ -38,11 +44,13 @@ class OSCursorAdapter(OutputAdapter):
         smooth: bool = True,
         responsiveness: float = 0.5,
         rate_hz: int = 120,
+        sensitivity: float = 1.0,
     ):
         self._mouse = mouse or Controller()
         self._w, self._h = screen_size or _main_screen_size()
         self._smooth = smooth
         self._alpha = responsiveness
+        self._sensitivity = sensitivity
         self._target: tuple[float, float] | None = None
         self._current: tuple[float, float] | None = None
         self._lock = threading.Lock()
@@ -54,8 +62,8 @@ class OSCursorAdapter(OutputAdapter):
 
     def handle(self, intent: Intent) -> None:
         if intent.type is IntentType.MOVE_CURSOR:
-            px = _clamp01(intent.params.get("x", 0.0)) * self._w
-            py = _clamp01(intent.params.get("y", 0.0)) * self._h
+            px = _gain(_clamp01(intent.params.get("x", 0.0)), self._sensitivity) * self._w
+            py = _gain(_clamp01(intent.params.get("y", 0.0)), self._sensitivity) * self._h
             if self._smooth:
                 with self._lock:
                     self._target = (px, py)

@@ -11,10 +11,19 @@ from kinesis.domain.gestures.pinch import PinchRecognizer
 from kinesis.domain.gestures.point import PointRecognizer
 
 
-def build(live: bool = False) -> Pipeline:
+def _flag_float(flag: str, default: float) -> float:
+    """Read `--flag VALUE` from argv, or return the default."""
+    if flag in sys.argv:
+        i = sys.argv.index(flag)
+        if i + 1 < len(sys.argv):
+            return float(sys.argv[i + 1])
+    return default
+
+
+def build(live: bool = False, sensitivity: float = 2.0) -> Pipeline:
     """Wire the concrete adapters into the pipeline. `live` swaps the safe DryRun
-    adapter for the real cursor."""
-    output = OSCursorAdapter() if live else DryRunAdapter()
+    adapter for the real cursor; `sensitivity` is the cursor gain (DPI)."""
+    output = OSCursorAdapter(sensitivity=sensitivity) if live else DryRunAdapter()
     return Pipeline(
         source=WebcamSource(),
         tracker=MediaPipeTracker(),
@@ -38,9 +47,11 @@ def _install_killswitch(pipeline: Pipeline) -> None:
 
 def main() -> None:
     live = "--live" in sys.argv
-    pipeline = build(live=live)
+    sensitivity = _flag_float("--sensitivity", 2.0)
+    pipeline = build(live=live, sensitivity=sensitivity)
     if live:
-        print("LIVE — controlling your real cursor. Drop your hand to disengage; ESC or Ctrl-C to quit.")
+        print(f"LIVE (sensitivity {sensitivity:g}) — controlling your real cursor. "
+              f"Drop your hand to disengage; ESC or Ctrl-C to quit.")
         _install_killswitch(pipeline)
     else:
         print("DryRun — printing intents, not touching the cursor. Ctrl-C to quit.  (pass --live for real control)")
