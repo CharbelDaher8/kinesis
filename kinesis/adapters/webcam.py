@@ -17,7 +17,7 @@ class WebcamSource(FrameSource):
     inside this file; colour conversion to RGB is the tracker's job.
     """
 
-    def __init__(self, index: int = 0, width: int = 1280, height: int = 720, mirror: bool = True, fps: int = 60):
+    def __init__(self, index: int = 0, width: int = 1920, height: int = 1080, mirror: bool = True, fps: int = 60):
         self._cap = cv2.VideoCapture(index)
         if not self._cap.isOpened():
             raise RuntimeError(f"could not open webcam at index {index} (check camera permission)")
